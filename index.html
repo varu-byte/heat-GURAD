@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Chennai Heat Guard | சென்னை வெப்பக் காப்பகம்</title>
+    <meta name="description" content="Extreme heat exposure protection, real-time Heat Index monitoring, relief points, and compliance platform for outdoor workers and Greater Chennai Corporation." />
+    <meta property="og:title" content="Chennai Heat Guard | சென்னை வெப்பக் காப்பகம்" />
+    <meta property="og:description" content="Extreme heat exposure protection, real-time Heat Index monitoring, relief points, and compliance platform for outdoor workers and Greater Chennai Corporation." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#ea580c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Heat Guard" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script>
+      // Gracefully handle preview environment WebSocket/HMR disconnects
+      window.addEventListener('error', function (event) {
+        if (
+          event &&
+          event.message &&
+          (event.message.includes('WebSocket') || event.message.includes('@vite/client') || event.message.includes('ws'))
+        ) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      });
+      window.addEventListener('unhandledrejection', function (event) {
+        if (
+          event &&
+          event.reason &&
+          event.reason.message &&
+          (event.reason.message.includes('WebSocket') || event.reason.message.includes('vite'))
+        ) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      });
+    </script>
+  </head>
+  <body class="bg-stone-100 text-stone-900 antialiased selection:bg-orange-500 selection:text-white dark:bg-stone-950 dark:text-stone-100">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

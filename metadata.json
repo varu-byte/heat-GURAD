@@ -1,0 +1,6 @@
+{
+  "name": "Chennai Heat Guard",
+  "description": "Extreme heat exposure protection, real-time Heat Index monitoring, relief points, and compliance platform for outdoor workers and Greater Chennai Corporation.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

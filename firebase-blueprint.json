@@ -1,0 +1,165 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized HeatGuard system administrator account.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "addedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt", "updatedAt"]
+    },
+    "MonitoredLocation": {
+      "title": "MonitoredLocation",
+      "description": "Administrator-configured geographic zone monitored for heat risk.",
+      "type": "object",
+      "properties": {
+        "locationId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "name_ta": { "type": "string", "maxLength": 120 },
+        "region": { "type": "string", "maxLength": 80 },
+        "ward_no": { "type": "number" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "enabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["locationId", "name", "lat", "lng", "enabled", "createdAt", "updatedAt"]
+    },
+    "AlertState": {
+      "title": "AlertState",
+      "description": "Current atomic risk and escalation state for a monitored location.",
+      "type": "object",
+      "properties": {
+        "locationId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "locationName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "currentRisk": { "type": "string", "enum": ["low", "moderate", "high", "extreme"] },
+        "previousRisk": { "type": "string", "enum": ["low", "moderate", "high", "extreme"] },
+        "currentHeatIndex": { "type": "number" },
+        "currentTemp": { "type": "number" },
+        "currentHumidity": { "type": "number" },
+        "trend": { "type": "string", "enum": ["rising", "falling", "stable"] },
+        "lastEscalationTime": { "type": "string", "maxLength": 64 },
+        "lastNotificationTime": { "type": "string", "maxLength": 64 },
+        "activeAlert": { "type": "boolean" },
+        "aiSummary": { "type": "string", "maxLength": 1000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["locationId", "locationName", "currentRisk", "previousRisk", "currentHeatIndex", "activeAlert", "updatedAt"]
+    },
+    "AlertHistoryEvent": {
+      "title": "AlertHistoryEvent",
+      "description": "Immutable escalation or de-escalation audit log entry.",
+      "type": "object",
+      "properties": {
+        "locationId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "locationName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "previousRisk": { "type": "string", "enum": ["low", "moderate", "high", "extreme"] },
+        "currentRisk": { "type": "string", "enum": ["low", "moderate", "high", "extreme"] },
+        "direction": { "type": "string", "enum": ["escalation", "de-escalation", "reminder", "recovery"] },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "notificationChannels": { "type": "array", "description": "Channels triggered (push, sms, admin, dashboard)" },
+        "recipientCount": { "type": "number" },
+        "deliveryStatus": { "type": "string", "enum": ["sent", "partial", "failed", "simulated", "skipped"] },
+        "pushStatus": { "type": "string", "enum": ["sent", "partial", "failed", "simulated", "skipped"] },
+        "smsStatus": { "type": "string", "enum": ["sent", "partial", "failed", "simulated", "skipped"] },
+        "simulationMode": { "type": "boolean" },
+        "heatIndex": { "type": "number" },
+        "safetyInstructions": { "type": "string", "maxLength": 1200 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["locationId", "locationName", "previousRisk", "currentRisk", "direction", "timestamp", "notificationChannels", "recipientCount", "deliveryStatus", "simulationMode", "createdAt"]
+    },
+    "NotificationSettings": {
+      "title": "NotificationSettings",
+      "description": "Global administrator escalation thresholds, cooldowns, and channel toggles.",
+      "type": "object",
+      "properties": {
+        "monitoringInterval": { "type": "number" },
+        "cooldownMinutes": { "type": "number" },
+        "reminderIntervalMinutes": { "type": "number" },
+        "smsEnabled": { "type": "boolean" },
+        "pushEnabled": { "type": "boolean" },
+        "escalationEnabled": { "type": "boolean" },
+        "notifyOnModerate": { "type": "boolean" },
+        "notifyOnDeescalation": { "type": "boolean" },
+        "moderateThreshold": { "type": "number" },
+        "highThreshold": { "type": "number" },
+        "extremeThreshold": { "type": "number" },
+        "maxRetries": { "type": "number" },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["monitoringInterval", "cooldownMinutes", "smsEnabled", "pushEnabled", "escalationEnabled", "moderateThreshold", "highThreshold", "extremeThreshold", "updatedAt"]
+    },
+    "RecipientSubscription": {
+      "title": "RecipientSubscription",
+      "description": "Location-targeted alert subscriber with opt-in consent and channel preferences.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 24 },
+        "locationIds": { "type": "array", "description": "Subscribed location IDs (max 25)" },
+        "pushEnabled": { "type": "boolean" },
+        "smsEnabled": { "type": "boolean" },
+        "consentGranted": { "type": "boolean" },
+        "consentTimestamp": { "type": "string", "maxLength": 64 },
+        "active": { "type": "boolean" },
+        "minRiskLevel": { "type": "string", "enum": ["moderate", "high", "extreme"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "name", "phone", "locationIds", "pushEnabled", "smsEnabled", "consentGranted", "active", "minRiskLevel", "createdAt", "updatedAt"]
+    },
+    "DeviceToken": {
+      "title": "DeviceToken",
+      "description": "FCM browser push token bound to user and subscribed locations.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "locationIds": { "type": "array", "description": "Subscribed location IDs (max 25)" },
+        "fcmToken": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "notificationEnabled": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "locationIds", "fcmToken", "notificationEnabled", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Authorized HeatGuard administrator accounts."
+    },
+    "/monitoredLocations/{locationId}": {
+      "schema": { "$ref": "#/entities/MonitoredLocation" },
+      "description": "Enabled/disabled locations monitored by the escalation system."
+    },
+    "/alertState/{locationId}": {
+      "schema": { "$ref": "#/entities/AlertState" },
+      "description": "Atomic per-location risk state and last notification timestamps."
+    },
+    "/alertHistory/{eventId}": {
+      "schema": { "$ref": "#/entities/AlertHistoryEvent" },
+      "description": "Audit trail of heat risk escalations, de-escalations, and delivery outcomes."
+    },
+    "/notificationSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/NotificationSettings" },
+      "description": "Global escalation configuration document (global)."
+    },
+    "/recipients/{recipientId}": {
+      "schema": { "$ref": "#/entities/RecipientSubscription" },
+      "description": "PII-isolated recipient subscriptions with phone numbers, locations, and consent."
+    },
+    "/deviceTokens/{tokenId}": {
+      "schema": { "$ref": "#/entities/DeviceToken" },
+      "description": "Browser push / FCM tokens mapped to users and subscribed locations."
+    }
+  }
+}

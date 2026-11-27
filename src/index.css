@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Leaflet Overrides */
+.leaflet-container {
+  font-family: inherit;
+  width: 100%;
+  height: 100%;
+  z-index: 0 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 4px;
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+  line-height: 1.4;
+}
+
+/* Custom scrollbars */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 9999px;
+}
+
+/* High Contrast mode for direct outdoor sunlight */
+.high-contrast-mode {
+  filter: contrast(115%) saturate(110%);
+}
+
+.high-contrast-mode button,
+.high-contrast-mode select,
+.high-contrast-mode input {
+  border-width: 2px !important;
+}
+
+/* Large text accessibility mode for outdoor sunlight readability */
+.large-text-mode {
+  font-size: 1.125rem;
+}
+.large-text-mode p,
+.large-text-mode span,
+.large-text-mode button,
+.large-text-mode select,
+.large-text-mode label {
+  font-size: 112% !important;
+  line-height: 1.45 !important;
+}
+

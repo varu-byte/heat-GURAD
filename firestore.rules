@@ -1,0 +1,306 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny all unspecified paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'varunsaiprabhu14@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidRisk(risk) {
+      return risk in ['low', 'moderate', 'high', 'extreme'];
+    }
+
+    function isValidDeliveryStatus(status) {
+      return status in ['sent', 'partial', 'failed', 'simulated', 'skipped'];
+    }
+
+    // Entity Validators (No existing()/diff() inside validators)
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'addedBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 120))
+        && (!('addedBy' in data) || (data.addedBy is string && data.addedBy.size() <= 128))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMonitoredLocation(data) {
+      return data.keys().hasAll(['locationId', 'name', 'lat', 'lng', 'enabled', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['locationId', 'name', 'name_ta', 'region', 'ward_no', 'lat', 'lng', 'enabled', 'createdAt', 'updatedAt'])
+        && isValidId(data.locationId) && data.locationId.size() <= 64
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && (!('name_ta' in data) || (data.name_ta is string && data.name_ta.size() <= 120))
+        && (!('region' in data) || (data.region is string && data.region.size() <= 80))
+        && (!('ward_no' in data) || (data.ward_no is number))
+        && data.lat is number && data.lat >= -90 && data.lat <= 90
+        && data.lng is number && data.lng >= -180 && data.lng <= 180
+        && data.enabled is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAlertState(data) {
+      return data.keys().hasAll(['locationId', 'locationName', 'currentRisk', 'previousRisk', 'currentHeatIndex', 'activeAlert', 'updatedAt'])
+        && data.keys().hasOnly(['locationId', 'locationName', 'currentRisk', 'previousRisk', 'currentHeatIndex', 'currentTemp', 'currentHumidity', 'trend', 'lastEscalationTime', 'lastNotificationTime', 'activeAlert', 'aiSummary', 'updatedAt'])
+        && isValidId(data.locationId) && data.locationId.size() <= 64
+        && data.locationName is string && data.locationName.size() >= 1 && data.locationName.size() <= 100
+        && isValidRisk(data.currentRisk)
+        && isValidRisk(data.previousRisk)
+        && data.currentHeatIndex is number
+        && (!('currentTemp' in data) || data.currentTemp is number)
+        && (!('currentHumidity' in data) || data.currentHumidity is number)
+        && (!('trend' in data) || data.trend in ['rising', 'falling', 'stable'])
+        && (!('lastEscalationTime' in data) || (data.lastEscalationTime is string && data.lastEscalationTime.size() <= 64))
+        && (!('lastNotificationTime' in data) || (data.lastNotificationTime is string && data.lastNotificationTime.size() <= 64))
+        && data.activeAlert is bool
+        && (!('aiSummary' in data) || (data.aiSummary is string && data.aiSummary.size() <= 1000))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAlertHistoryEvent(data) {
+      return data.keys().hasAll(['locationId', 'locationName', 'previousRisk', 'currentRisk', 'direction', 'timestamp', 'notificationChannels', 'recipientCount', 'deliveryStatus', 'simulationMode', 'createdAt'])
+        && data.keys().hasOnly(['locationId', 'locationName', 'previousRisk', 'currentRisk', 'direction', 'timestamp', 'notificationChannels', 'recipientCount', 'deliveryStatus', 'pushStatus', 'smsStatus', 'simulationMode', 'heatIndex', 'safetyInstructions', 'createdAt'])
+        && isValidId(data.locationId) && data.locationId.size() <= 64
+        && data.locationName is string && data.locationName.size() >= 1 && data.locationName.size() <= 100
+        && isValidRisk(data.previousRisk)
+        && isValidRisk(data.currentRisk)
+        && data.direction in ['escalation', 'de-escalation', 'reminder', 'recovery']
+        && data.timestamp is string && data.timestamp.size() <= 64
+        && data.notificationChannels is list
+        && data.notificationChannels.size() <= 4
+        && data.notificationChannels.hasOnly(['push', 'sms', 'admin', 'dashboard'])
+        && data.recipientCount is number && data.recipientCount >= 0
+        && isValidDeliveryStatus(data.deliveryStatus)
+        && (!('pushStatus' in data) || isValidDeliveryStatus(data.pushStatus))
+        && (!('smsStatus' in data) || isValidDeliveryStatus(data.smsStatus))
+        && data.simulationMode is bool
+        && (!('heatIndex' in data) || data.heatIndex is number)
+        && (!('safetyInstructions' in data) || (data.safetyInstructions is string && data.safetyInstructions.size() <= 1200))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidNotificationSettings(data) {
+      return data.keys().hasAll(['monitoringInterval', 'cooldownMinutes', 'smsEnabled', 'pushEnabled', 'escalationEnabled', 'moderateThreshold', 'highThreshold', 'extremeThreshold', 'updatedAt'])
+        && data.keys().hasOnly(['monitoringInterval', 'cooldownMinutes', 'reminderIntervalMinutes', 'smsEnabled', 'pushEnabled', 'escalationEnabled', 'notifyOnModerate', 'notifyOnDeescalation', 'moderateThreshold', 'highThreshold', 'extremeThreshold', 'maxRetries', 'updatedBy', 'updatedAt'])
+        && data.monitoringInterval is number && data.monitoringInterval >= 1 && data.monitoringInterval <= 120
+        && data.cooldownMinutes is number && data.cooldownMinutes >= 0 && data.cooldownMinutes <= 1440
+        && (!('reminderIntervalMinutes' in data) || (data.reminderIntervalMinutes is number && data.reminderIntervalMinutes >= 0 && data.reminderIntervalMinutes <= 1440))
+        && data.smsEnabled is bool
+        && data.pushEnabled is bool
+        && data.escalationEnabled is bool
+        && (!('notifyOnModerate' in data) || data.notifyOnModerate is bool)
+        && (!('notifyOnDeescalation' in data) || data.notifyOnDeescalation is bool)
+        && data.moderateThreshold is number && data.moderateThreshold >= 20 && data.moderateThreshold <= 45
+        && data.highThreshold is number && data.highThreshold > data.moderateThreshold && data.highThreshold <= 50
+        && data.extremeThreshold is number && data.extremeThreshold > data.highThreshold && data.extremeThreshold <= 60
+        && (!('maxRetries' in data) || (data.maxRetries is number && data.maxRetries >= 0 && data.maxRetries <= 5))
+        && (!('updatedBy' in data) || (data.updatedBy is string && data.updatedBy.size() <= 128))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidRecipient(data) {
+      return data.keys().hasAll(['ownerUid', 'name', 'phone', 'locationIds', 'pushEnabled', 'smsEnabled', 'consentGranted', 'active', 'minRiskLevel', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerUid', 'name', 'phone', 'locationIds', 'pushEnabled', 'smsEnabled', 'consentGranted', 'consentTimestamp', 'active', 'minRiskLevel', 'createdAt', 'updatedAt'])
+        && isValidId(data.ownerUid)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.phone is string && data.phone.size() <= 24
+        && data.locationIds is list && data.locationIds.size() <= 25
+        && (data.locationIds.size() == 0 || data.locationIds[0] is string)
+        && data.pushEnabled is bool
+        && data.smsEnabled is bool
+        && data.consentGranted is bool
+        && (!('consentTimestamp' in data) || (data.consentTimestamp is string && data.consentTimestamp.size() <= 64))
+        && data.active is bool
+        && data.minRiskLevel in ['moderate', 'high', 'extreme']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDeviceToken(data) {
+      return data.keys().hasAll(['userId', 'locationIds', 'fcmToken', 'notificationEnabled', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'locationIds', 'fcmToken', 'notificationEnabled', 'updatedAt'])
+        && isValidId(data.userId)
+        && data.locationIds is list && data.locationIds.size() <= 25
+        && (data.locationIds.size() == 0 || data.locationIds[0] is string)
+        && data.fcmToken is string && data.fcmToken.size() >= 1 && data.fcmToken.size() <= 512
+        && data.notificationEnabled is bool
+        && data.updatedAt is timestamp;
+    }
+
+    // Connection health check (no PII)
+    match /test/connection {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    // Admin roles collection (PII / RBAC strict isolation)
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isAdmin() || (isVerifiedUser() && adminId == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.uid == request.auth.uid);
+      allow create: if isValidId(adminId)
+        && isAdmin()
+        && isValidAdminUser(incoming())
+        && incoming().uid == adminId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(adminId)
+        && isAdmin()
+        && isValidAdminUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'addedBy', 'updatedAt']);
+      allow delete: if isValidId(adminId) && isAdmin() && adminId != request.auth.uid;
+    }
+
+    // Monitored Locations (Public read for monitoring display, Admin-only write)
+    match /monitoredLocations/{locationId} {
+      allow get: if isValidId(locationId);
+      allow list: if resource.data.enabled == true || isAdmin();
+      allow create: if isValidId(locationId)
+        && isAdmin()
+        && isValidMonitoredLocation(incoming())
+        && incoming().locationId == locationId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(locationId)
+        && isAdmin()
+        && isValidMonitoredLocation(incoming())
+        && incoming().locationId == existing().locationId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'name_ta', 'region', 'ward_no', 'lat', 'lng', 'enabled', 'updatedAt']);
+      allow delete: if isValidId(locationId) && isAdmin();
+    }
+
+    // Atomic per-location Alert State (Admin writes, public read of non-PII state)
+    match /alertState/{locationId} {
+      allow get: if isValidId(locationId);
+      allow list: if resource.data.currentRisk in ['low', 'moderate', 'high', 'extreme'];
+      allow create: if isValidId(locationId)
+        && isAdmin()
+        && isValidAlertState(incoming())
+        && incoming().locationId == locationId
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(locationId)
+        && isAdmin()
+        && isValidAlertState(incoming())
+        && incoming().locationId == existing().locationId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['locationName', 'currentRisk', 'previousRisk', 'currentHeatIndex', 'currentTemp', 'currentHumidity', 'trend', 'lastEscalationTime', 'lastNotificationTime', 'activeAlert', 'aiSummary', 'updatedAt']);
+      allow delete: if isValidId(locationId) && isAdmin();
+    }
+
+    // Alert History Events (Non-PII escalation logs, Admin-only write)
+    match /alertHistory/{eventId} {
+      allow get: if isValidId(eventId);
+      allow list: if resource.data.currentRisk in ['low', 'moderate', 'high', 'extreme'];
+      allow create: if isValidId(eventId)
+        && isAdmin()
+        && isValidAlertHistoryEvent(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(eventId)
+        && isAdmin()
+        && isValidAlertHistoryEvent(incoming())
+        && incoming().locationId == existing().locationId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['deliveryStatus', 'pushStatus', 'smsStatus', 'recipientCount']);
+      allow delete: if isValidId(eventId) && isAdmin();
+    }
+
+    // Global Escalation Settings (No PII; Admin-only modifications)
+    match /notificationSettings/{settingId} {
+      allow get: if isValidId(settingId) && (settingId == 'global' || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(settingId)
+        && settingId == 'global'
+        && isAdmin()
+        && isValidNotificationSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(settingId)
+        && settingId == 'global'
+        && isAdmin()
+        && isValidNotificationSettings(incoming())
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['monitoringInterval', 'cooldownMinutes', 'reminderIntervalMinutes', 'smsEnabled', 'pushEnabled', 'escalationEnabled', 'notifyOnModerate', 'notifyOnDeescalation', 'moderateThreshold', 'highThreshold', 'extremeThreshold', 'maxRetries', 'updatedBy', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Alert Recipients (Strict PII Isolation: Owner or Admin only)
+    match /recipients/{recipientId} {
+      allow get: if isValidId(recipientId) && (isAdmin() || (isVerifiedUser() && existing().ownerUid == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidId(recipientId)
+        && isVerifiedUser()
+        && isValidRecipient(incoming())
+        && (isAdmin() || incoming().ownerUid == request.auth.uid)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(recipientId)
+        && isVerifiedUser()
+        && isValidRecipient(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (existing().ownerUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'locationIds', 'pushEnabled', 'smsEnabled', 'consentGranted', 'consentTimestamp', 'active', 'minRiskLevel', 'updatedAt']))
+        );
+      allow delete: if isValidId(recipientId) && (isAdmin() || (isVerifiedUser() && existing().ownerUid == request.auth.uid));
+    }
+
+    // FCM Device Tokens (Strict Isolation: Token Owner or Admin only)
+    match /deviceTokens/{tokenId} {
+      allow get: if isValidId(tokenId) && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+      allow create: if isValidId(tokenId)
+        && isVerifiedUser()
+        && isValidDeviceToken(incoming())
+        && (isAdmin() || incoming().userId == request.auth.uid)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(tokenId)
+        && isVerifiedUser()
+        && isValidDeviceToken(incoming())
+        && incoming().userId == existing().userId
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['locationIds', 'fcmToken', 'notificationEnabled', 'updatedAt']))
+        );
+      allow delete: if isValidId(tokenId) && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+    }
+  }
+}
